@@ -49,22 +49,24 @@ podTemplate(
 
       // DONE: The next two stages should run in parallel
 
-      parallel {
-        // Using Maven run the unit tests
-        stage('Unit Tests') {
-          echo "Running Unit Tests"
+      stage('Run Unit Tests and Code Analysis') {
+        parallel {
+          // Using Maven run the unit tests
+          stage('Unit Tests') {
+            echo "Running Unit Tests"
 
-          // DONE: Execute Unit Tests
-          sh "${mvnCmd} test"
-        }
+            // DONE: Execute Unit Tests
+            sh "${mvnCmd} test"
+          }
 
-        // Using Maven to call SonarQube for Code Analysis
-        stage('Code Analysis') {
-          echo "Running Code Analysis"
+          // Using Maven to call SonarQube for Code Analysis
+          stage('Code Analysis') {
+            echo "Running Code Analysis"
 
-          // DONE: Execute Sonarqube Tests
-          sh "${mvnCmd} sonar:sonar -Dsonar.host.url=http://sonarqube.gpte-hw-cicd.svc.cluster.local:9000"
+            // DONE: Execute Sonarqube Tests
+            sh "${mvnCmd} sonar:sonar -Dsonar.host.url=http://sonarqube.gpte-hw-cicd.svc.cluster.local:9000"
 
+          }
         }
       }
 
