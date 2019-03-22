@@ -44,7 +44,7 @@ podTemplate(
         echo "Building version ${devTag}"
 
         // DONE: Execute Maven Build
-        sh "${mvnCmd} war:war"
+        sh "${mvnCmd} package -DskipTests=true"
       }
 
       // DONE: The next two stages should run in parallel
