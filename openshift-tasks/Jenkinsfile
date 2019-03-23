@@ -175,6 +175,11 @@ podTemplate(
               activeApp = openshift.selector("route", "tasks").object().spec.to.name
               destApp = (activeApp == "tasks-blue") ? "tasks-green" : "tasks-blue"
 
+              def dc = openshift.selector("dc", destApp)
+              def dcObj = dc.object()
+              dcObj.spec.template.spec.containers[0].image = "docker-registry.default.svc:5000/${devProject}/tasks:${prodTag}"
+              openshift.apply(dcObj)
+
               def configMap = openshift.selector("configmap", "${destApp}-config").object()
               configMap.data["application-roles.properties"] = readFile "./configuration/application-roles.properties"
               configMap.data["application-users.properties"] = readFile "./configuration/application-users.properties"
