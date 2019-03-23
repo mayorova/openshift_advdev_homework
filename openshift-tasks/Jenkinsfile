@@ -47,117 +47,117 @@ podTemplate(
         sh "${mvnCmd} package -DskipTests=true"
       }
 
-      // // DONE: The next two stages should run in parallel
+      // DONE: The next two stages should run in parallel
 
-      // stage('Run Unit Tests and Code Analysis') {
-      //   parallel(
-      //     // Using Maven run the unit tests
-      //     "Unit Tests": {
-      //       echo "Running Unit Tests"
+      stage('Run Unit Tests and Code Analysis') {
+        parallel(
+          // Using Maven run the unit tests
+          "Unit Tests": {
+            echo "Running Unit Tests"
 
-      //       // DONE: Execute Unit Tests
-      //       sh "${mvnCmd} test"
-      //     },
-      //     // Using Maven to call SonarQube for Code Analysis
-      //     "Code Analysis": {
-      //       echo "Running Code Analysis"
+            // DONE: Execute Unit Tests
+            sh "${mvnCmd} test"
+          },
+          // Using Maven to call SonarQube for Code Analysis
+          "Code Analysis": {
+            echo "Running Code Analysis"
 
-      //       // DONE: Execute Sonarqube Tests
-      //       sh "${mvnCmd} sonar:sonar -Dsonar.host.url=http://sonarqube.gpte-hw-cicd.svc.cluster.local:9000"
+            // DONE: Execute Sonarqube Tests
+            sh "${mvnCmd} sonar:sonar -Dsonar.host.url=http://sonarqube.gpte-hw-cicd.svc.cluster.local:9000"
 
-      //     }
-      //   )
-      // }
+          }
+        )
+      }
 
-      // // Publish the built war file to Nexus
-      // stage('Publish to Nexus') {
-      //   echo "Publish to Nexus"
+      // Publish the built war file to Nexus
+      stage('Publish to Nexus') {
+        echo "Publish to Nexus"
 
-      //   // DONE: Publish to Nexus
-      //   sh "${mvnCmd} deploy -DaltDeploymentRepository=nexus::default::http://nexus3.gpte-hw-cicd.svc.cluster.local:8081/repository/releases"
-      // }
+        // DONE: Publish to Nexus
+        sh "${mvnCmd} deploy -DaltDeploymentRepository=nexus::default::http://nexus3.gpte-hw-cicd.svc.cluster.local:8081/repository/releases"
+      }
 
-      // // Build the OpenShift Image in OpenShift and tag it.
-      // stage('Build and Tag OpenShift Image') {
-      //   echo "Building OpenShift container image tasks:${devTag}"
+      // Build the OpenShift Image in OpenShift and tag it.
+      stage('Build and Tag OpenShift Image') {
+        echo "Building OpenShift container image tasks:${devTag}"
 
-      //   // DONE: Build Image, tag Image
-      //   script {
-      //     openshift.withCluster() {
-      //       openshift.withProject("${GUID}-tasks-dev") {
-      //         openshift.selector("bc", "tasks").startBuild("--from-file=./target/openshift-tasks.war", "--wait=true")
+        // DONE: Build Image, tag Image
+        script {
+          openshift.withCluster() {
+            openshift.withProject("${GUID}-tasks-dev") {
+              openshift.selector("bc", "tasks").startBuild("--from-file=./target/openshift-tasks.war", "--wait=true")
 
-      //         // DONE: Tag the image using the devTag.
-      //         openshift.tag("tasks:latest", "tasks:${devTag}")
-      //       }
-      //     }
-      //   }
-      // }
+              // DONE: Tag the image using the devTag.
+              openshift.tag("tasks:latest", "tasks:${devTag}")
+            }
+          }
+        }
+      }
 
-      // // Deploy the built image to the Development Environment.
-      // stage('Deploy to Dev') {
-      //   echo "Deploying container image to Development Project"
+      // Deploy the built image to the Development Environment.
+      stage('Deploy to Dev') {
+        echo "Deploying container image to Development Project"
 
-      //   // DONE: Deploy to development Project
-      //   //      Set Image, Set VERSION
-      //   //      Make sure the application is running and ready before proceeding
-      //   script {
-      //     openshift.withCluster() {
-      //       openshift.withProject("${GUID}-tasks-dev") {
+        // DONE: Deploy to development Project
+        //      Set Image, Set VERSION
+        //      Make sure the application is running and ready before proceeding
+        script {
+          openshift.withCluster() {
+            openshift.withProject("${GUID}-tasks-dev") {
 
-      //         // Update the image on the dev deployment config
-      //         def dc = openshift.selector("dc", "tasks")
-      //         def dcObj = dc.object()
-      //         dcObj.spec.template.spec.containers[0].image = "docker-registry.default.svc:5000/${GUID}-tasks-dev/tasks:${devTag}"
-      //         openshift.apply(dcObj)
+              // Update the image on the dev deployment config
+              def dc = openshift.selector("dc", "tasks")
+              def dcObj = dc.object()
+              dcObj.spec.template.spec.containers[0].image = "docker-registry.default.svc:5000/${GUID}-tasks-dev/tasks:${devTag}"
+              openshift.apply(dcObj)
 
-      //         // Update with new values
-      //         def configMap = openshift.selector("configmap", "tasks-config").object()
-      //         configMap.data["application-roles.properties"] = readFile "./configuration/application-roles.properties"
-      //         configMap.data["application-users.properties"] = readFile "./configuration/application-users.properties"
-      //         openshift.apply(configMap)
+              // Update with new values
+              def configMap = openshift.selector("configmap", "tasks-config").object()
+              configMap.data["application-roles.properties"] = readFile "./configuration/application-roles.properties"
+              configMap.data["application-users.properties"] = readFile "./configuration/application-users.properties"
+              openshift.apply(configMap)
 
-      //         // Reeploy the dev deployment
-      //         dc.rollout().latest();
+              // Reeploy the dev deployment
+              dc.rollout().latest();
 
-      //         // Wait until the deployment is running
-      //         def dcVersion = openshift.selector("dc", "tasks").object().status.latestVersion
-      //         def rc = openshift.selector("rc", "tasks-${dcVersion}").object()
+              // Wait until the deployment is running
+              def dcVersion = openshift.selector("dc", "tasks").object().status.latestVersion
+              def rc = openshift.selector("rc", "tasks-${dcVersion}").object()
 
-      //         echo "Waiting for ReplicationController tasks-${dcVersion} to be ready"
-      //         while (rc.spec.replicas != rc.status.readyReplicas) {
-      //           sleep 5
-      //           rc = openshift.selector("rc", "tasks-${dcVersion}").object()
-      //         }
-      //       }
-      //     }
-      //   }
+              echo "Waiting for ReplicationController tasks-${dcVersion} to be ready"
+              while (rc.spec.replicas != rc.status.readyReplicas) {
+                sleep 5
+                rc = openshift.selector("rc", "tasks-${dcVersion}").object()
+              }
+            }
+          }
+        }
 
-      // }
+      }
 
-      // // Copy Image to Nexus container registry
-      // stage('Copy Image to Nexus container registry') {
-      //   echo "Copy image to Nexus container registry"
+      // Copy Image to Nexus container registry
+      stage('Copy Image to Nexus container registry') {
+        echo "Copy image to Nexus container registry"
 
-      //   // DONE: Copy image to Nexus container registry
-      //   script {
-      //     openshift.withCluster() {
+        // DONE: Copy image to Nexus container registry
+        script {
+          openshift.withCluster() {
 
-      //       def token = openshift.raw("sa get-token jenkins")
+            def token = openshift.raw("sa get-token jenkins")
             
-      //       openshift.withProject("${GUID}-tasks-dev") {
+            openshift.withProject("${GUID}-tasks-dev") {
 
-      //         // NOTE: disabling this step because Nexus registry is failing:
-      //         // Getting image source signatures time="2019-03-22T20:49:50Z" level=fatal msg="Error checking for blob sha256:9a32f102e6778e4b3c677f1f93fa121808006d3c9e002237677248de9acb9589 at destination: pinging docker registry returned: Get http://nexus3.gpte-hw-cicd.svc.cluster.local:5000/v2/: dial tcp 172.30.123.91:5000: connect: no route to host"
+              // NOTE: disabling this step because Nexus registry is failing:
+              // Getting image source signatures time="2019-03-22T20:49:50Z" level=fatal msg="Error checking for blob sha256:9a32f102e6778e4b3c677f1f93fa121808006d3c9e002237677248de9acb9589 at destination: pinging docker registry returned: Get http://nexus3.gpte-hw-cicd.svc.cluster.local:5000/v2/: dial tcp 172.30.123.91:5000: connect: no route to host"
               
-      //         // sh "skopeo copy --src-tls-verify=false --dest-tls-verify=false --src-creds=openshift:${token.out.trim()} --dest-creds=admin:admin123 docker://docker-registry.default.svc:5000/${GUID}-tasks-dev/tasks:${devTag} docker://nexus3.gpte-hw-cicd.svc.cluster.local:5000/${GUID}-tasks-dev/tasks:${prodTag}"
+              // sh "skopeo copy --src-tls-verify=false --dest-tls-verify=false --src-creds=openshift:${token.out.trim()} --dest-creds=admin:admin123 docker://docker-registry.default.svc:5000/${GUID}-tasks-dev/tasks:${devTag} docker://nexus3.gpte-hw-cicd.svc.cluster.local:5000/${GUID}-tasks-dev/tasks:${prodTag}"
 
-      //         // DONE: Tag the built image with the production tag.
-      //         openshift.tag("tasks:${devTag}", "tasks:${prodTag}")
-      //       }
-      //     }
-      //   }
-      // }
+              // DONE: Tag the built image with the production tag.
+              openshift.tag("tasks:${devTag}", "tasks:${prodTag}")
+            }
+          }
+        }
+      }
 
       // Blue/Green Deployment into Production
       // -------------------------------------
