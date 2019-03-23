@@ -175,7 +175,7 @@ podTemplate(
               activeApp = openshift.selector("route", "tasks").object().spec.to.name
               destApp = (activeApp == "tasks-blue") ? "tasks-green" : "tasks-blue"
 
-              def configMap = openshift.selector("configmap", "${destService}-config").object()
+              def configMap = openshift.selector("configmap", "${destApp}-config").object()
               configMap.data["application-roles.properties"] = readFile "./configuration/application-roles.properties"
               configMap.data["application-users.properties"] = readFile "./configuration/application-users.properties"
               openshift.apply(configMap)
@@ -184,13 +184,13 @@ podTemplate(
               dc.rollout().latest();
 
               // 5. Wait until application is running
-              def dcVersion = openshift.selector("dc", destService).object().status.latestVersion
-              def rc = openshift.selector("rc", "${destService}-${dcVersion}").object()
+              def dcVersion = openshift.selector("dc", destApp).object().status.latestVersion
+              def rc = openshift.selector("rc", "${destApp}-${dcVersion}").object()
 
-              echo "Waiting for ReplicationController ${destService}-${dcVersion} to be ready"
+              echo "Waiting for ReplicationController ${destApp}-${dcVersion} to be ready"
               while (rc.spec.replicas != rc.status.readyReplicas) {
                 sleep 5
-                rc = openshift.selector("rc", "${destService}-${dcVersion}").object()
+                rc = openshift.selector("rc", "${destApp}-${dcVersion}").object()
               }
 
             }
