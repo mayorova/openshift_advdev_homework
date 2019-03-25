@@ -139,18 +139,15 @@ podTemplate(
       stage('Copy Image to Nexus container registry') {
         echo "Copy image to Nexus container registry"
 
-        // DONE: Copy image to Nexus container registry
         script {
           openshift.withCluster() {
 
             def token = openshift.raw("sa get-token jenkins")
             
             openshift.withProject("${GUID}-tasks-dev") {
-
-              // NOTE: disabling this step because Nexus registry is failing:
-              // Getting image source signatures time="2019-03-22T20:49:50Z" level=fatal msg="Error checking for blob sha256:9a32f102e6778e4b3c677f1f93fa121808006d3c9e002237677248de9acb9589 at destination: pinging docker registry returned: Get http://nexus3.gpte-hw-cicd.svc.cluster.local:5000/v2/: dial tcp 172.30.123.91:5000: connect: no route to host"
               
-              // sh "skopeo copy --src-tls-verify=false --dest-tls-verify=false --src-creds=openshift:${token.out.trim()} --dest-creds=admin:admin123 docker://docker-registry.default.svc:5000/${GUID}-tasks-dev/tasks:${devTag} docker://nexus3.gpte-hw-cicd.svc.cluster.local:5000/${GUID}-tasks-dev/tasks:${prodTag}"
+              // DONE: Copy image to Nexus container registry
+              sh "skopeo copy --src-tls-verify=false --dest-tls-verify=false --src-creds=openshift:${token.out.trim()} --dest-creds=admin:admin123 docker://docker-registry.default.svc:5000/${GUID}-tasks-dev/tasks:${devTag} docker://nexus-registry.gpte-hw-cicd.svc.cluster.local:5000/${GUID}-tasks-dev/tasks:${prodTag}"
 
               // DONE: Tag the built image with the production tag.
               openshift.tag("tasks:${devTag}", "tasks:${prodTag}")
