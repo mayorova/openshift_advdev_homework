@@ -111,6 +111,9 @@ podTemplate(
               dcObj.spec.template.spec.containers[0].image = "docker-registry.default.svc:5000/${GUID}-tasks-dev/tasks:${devTag}"
               openshift.apply(dcObj)
 
+              // Set VERSION environment variable
+              openshift.set("env", "dc/tasks", "VERSION='${devTag} (tasks-dev)'", "--overwrite")
+
               // Update with new values
               def configMap = openshift.selector("configmap", "tasks-config").object()
               configMap.data["application-roles.properties"] = readFile "./configuration/application-roles.properties"
@@ -176,6 +179,9 @@ podTemplate(
               def dcObj = dc.object()
               dcObj.spec.template.spec.containers[0].image = "docker-registry.default.svc:5000/${GUID}-tasks-dev/tasks:${prodTag}"
               openshift.apply(dcObj)
+
+              // Set VERSION environment variable
+              openshift.set("env", "dc/tasks", "VERSION='${devTag} (${destApp})'", "--overwrite")
 
               def configMap = openshift.selector("configmap", "${destApp}-config").object()
               configMap.data["application-roles.properties"] = readFile "./configuration/application-roles.properties"
