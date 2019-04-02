@@ -63,7 +63,7 @@ podTemplate(
             echo "Running Code Analysis"
 
             // DONE: Execute Sonarqube Tests
-            // sh "${mvnCmd} sonar:sonar -Dsonar.host.url=http://sonarqube.gpte-hw-cicd.svc.cluster.local:9000"
+            sh "${mvnCmd} sonar:sonar -Dsonar.host.url=http://sonarqube.gpte-hw-cicd.svc.cluster.local:9000"
 
           }
         )
@@ -74,7 +74,7 @@ podTemplate(
         echo "Publish to Nexus"
 
         // DONE: Publish to Nexus
-        // sh "${mvnCmd} deploy -DaltDeploymentRepository=nexus::default::http://nexus3.gpte-hw-cicd.svc.cluster.local:8081/repository/releases"
+        sh "${mvnCmd} deploy -DaltDeploymentRepository=nexus::default::http://nexus3.gpte-hw-cicd.svc.cluster.local:8081/repository/releases"
       }
 
       // Build the OpenShift Image in OpenShift and tag it.
@@ -125,18 +125,16 @@ podTemplate(
               // from https://github.com/openshift/jenkins-client-plugin#looking-to-verify-a-deployment-or-service-we-can-still-do-that
               dc.rollout().status()
 
-              echo "====> Debugging missing 'tasks-dev' in the curl response"
+              echo "Waiting for 'tasks-dev' to appear in the curl response"
               def tryAgain = true
               def devTasksRoute = ""
               while (tryAgain) {
                 devTasksRoute = sh(returnStdout: true, script: "curl tasks-${GUID}-tasks-dev.apps.${CLUSTER}").trim()
-                // Check if the returned string contains "tasks-dev"
                 if (devTasksRoute.contains("tasks-dev")) {
                   echo "*** tasks-dev validated successfully."
                   tryAgain = false
                 }
                 else {
-                  echo "${devTasksRoute}"
                   echo "*** tasks-dev returned unexpected name."
                   sleep 5
                 }
@@ -159,7 +157,7 @@ podTemplate(
             openshift.withProject("${GUID}-tasks-dev") {
               
               // DONE: Copy image to Nexus container registry
-              // sh "skopeo copy --src-tls-verify=false --dest-tls-verify=false --src-creds=openshift:${token.out.trim()} --dest-creds=admin:redhat docker://docker-registry.default.svc:5000/${GUID}-tasks-dev/tasks:${devTag} docker://nexus-registry.gpte-hw-cicd.svc.cluster.local:5000/${GUID}-tasks-dev/tasks:${prodTag}"
+              sh "skopeo copy --src-tls-verify=false --dest-tls-verify=false --src-creds=openshift:${token.out.trim()} --dest-creds=admin:redhat docker://docker-registry.default.svc:5000/${GUID}-tasks-dev/tasks:${devTag} docker://nexus-registry.gpte-hw-cicd.svc.cluster.local:5000/${GUID}-tasks-dev/tasks:${prodTag}"
 
               // DONE: Tag the built image with the production tag.
               openshift.tag("tasks:${devTag}", "tasks:${prodTag}")
@@ -217,18 +215,16 @@ podTemplate(
               routeObj.spec.to.name = destApp
               openshift.apply(routeObj)
 
-              echo "====> Debugging missing '${destApp}' in the curl response"
+              echo "Waiting for '${destApp}' to appear in the curl response"
               def tryAgain = true
               def tasksRoute = ""
               while (tryAgain) {
                 tasksRoute = sh(returnStdout: true, script: "curl tasks-${GUID}-tasks-prod.apps.${CLUSTER}").trim()
-                // Check if the returned string contains "tasks-green"
                 if (tasksRoute.contains("${destApp}")) {
                   echo "*** ${destApp} validated successfully."
                   tryAgain = false
                 }
                 else {
-                  echo "${tasksRoute}"
                   echo "*** ${destApp} returned unexpected name."
                   sleep 5
                 }
