@@ -106,10 +106,7 @@ podTemplate(
             openshift.withProject("${GUID}-tasks-dev") {
 
               // Update the image on the dev deployment config
-              def dc = openshift.selector("dc", "tasks")
-              def dcObj = dc.object()
-              dcObj.spec.template.spec.containers[0].image = "docker-registry.default.svc:5000/${GUID}-tasks-dev/tasks:${devTag}"
-              openshift.apply(dcObj)
+              openshift.set("image", "dc/tasks", "tasks=docker-registry.default.svc:5000/${GUID}-tasks-dev/tasks:${devTag}")
 
               // Set VERSION environment variable
               openshift.set("env", "dc/tasks", "VERSION='${devTag} (tasks-dev)'", "--overwrite")
@@ -121,17 +118,12 @@ podTemplate(
               openshift.apply(configMap)
 
               // Reeploy the dev deployment
+              def dc = openshift.selector("dc", "tasks")
               dc.rollout().latest();
 
               // Wait until the deployment is running
-              def dcVersion = openshift.selector("dc", "tasks").object().status.latestVersion
-              def rc = openshift.selector("rc", "tasks-${dcVersion}").object()
-
-              echo "Waiting for ReplicationController tasks-${dcVersion} to be ready"
-              while (rc.spec.replicas != rc.status.readyReplicas) {
-                sleep 5
-                rc = openshift.selector("rc", "tasks-${dcVersion}").object()
-              }
+              // from https://github.com/openshift/jenkins-client-plugin#looking-to-verify-a-deployment-or-service-we-can-still-do-that
+              dc.rollout().status()
             }
           }
         }
@@ -175,10 +167,8 @@ podTemplate(
               activeApp = openshift.selector("route", "tasks").object().spec.to.name
               destApp = (activeApp == "tasks-blue") ? "tasks-green" : "tasks-blue"
 
-              def dc = openshift.selector("dc", destApp)
-              def dcObj = dc.object()
-              dcObj.spec.template.spec.containers[0].image = "docker-registry.default.svc:5000/${GUID}-tasks-dev/tasks:${prodTag}"
-              openshift.apply(dcObj)
+              // Update the image on the dev deployment config
+              openshift.set("image", "dc/${destApp}", "${destApp}=docker-registry.default.svc:5000/${GUID}-tasks-dev/tasks:${prodTag}")
 
               // Set VERSION environment variable
               openshift.set("env", "dc/${destApp}", "VERSION='${prodTag} (${destApp})'", "--overwrite")
@@ -189,18 +179,11 @@ podTemplate(
               openshift.apply(configMap)
 
               // 3. Deploy into the other application
+              def dc = openshift.selector("dc", "${destApp}")
               dc.rollout().latest();
 
               // 5. Wait until application is running
-              def dcVersion = openshift.selector("dc", destApp).object().status.latestVersion
-              def rc = openshift.selector("rc", "${destApp}-${dcVersion}").object()
-
-              echo "Waiting for ReplicationController ${destApp}-${dcVersion} to be ready"
-              while (rc.spec.replicas != rc.status.readyReplicas) {
-                sleep 5
-                rc = openshift.selector("rc", "${destApp}-${dcVersion}").object()
-              }
-
+              dc.rollout().status()
             }
           }
         }
