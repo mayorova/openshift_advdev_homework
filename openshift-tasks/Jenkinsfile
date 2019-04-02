@@ -181,7 +181,7 @@ podTemplate(
               openshift.apply(dcObj)
 
               // Set VERSION environment variable
-              openshift.set("env", "dc/${destApp}", "VERSION='${devTag} (${destApp})'", "--overwrite")
+              openshift.set("env", "dc/${destApp}", "VERSION='${prodTag} (${destApp})'", "--overwrite")
 
               def configMap = openshift.selector("configmap", "${destApp}-config").object()
               configMap.data["application-roles.properties"] = readFile "./configuration/application-roles.properties"
